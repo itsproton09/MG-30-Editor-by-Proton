@@ -300,276 +300,134 @@
             
             // EXPORT TRAP
             if(waitingForExport && d[0]===0xF0 && d.length>60) {
-                let n =        <div class="modal">
-            <h3 style="color:#fff; margin-top:0;">PATCH MANAGER</h3>
-            <p style="color:#666; font-size:11px;">CLICK A SLOT TO IMPORT FILE TO</p>
-            <div class="grid" id="patchGrid"></div>
-            <button class="btn" style="width:100%; margin-top:10px;" onclick="closeModal()">CANCEL</button>
-        </div>
-    </div>
-
-    <header>
-        <div class="brand">NUX <span>PROTON</span></div>
-        <div class="status-dot" id="statusLED"></div>
-    </header>
-
-    <div class="rig-view">
-        <div class="lcd">
-            <div class="lcd-bar"><span>USB: <b id="usbStatus">--</b></span><span>BPM 120</span></div>
-            <div class="lcd-content">
-                <div class="patch-num" id="lcdNum">--</div>
-                <div class="patch-name" id="lcdName">STANDBY</div>
-            </div>
-        </div>
-        <div class="nav-controls">
-            <button class="nav-btn" onclick="changePatch(-1)">◀</button>
-            <button class="nav-btn" onclick="changePatch(1)">▶</button>
-        </div>
-    </div>
-
-    <div class="chain">
-        <div class="pedal" id="blk-WAH" onclick="loadBlock('WAH')">WAH</div>
-        <div class="pedal" id="blk-CMP" onclick="loadBlock('CMP')">CMP</div>
-        <div class="pedal" id="blk-EFX" onclick="loadBlock('EFX')">EFX</div>
-        <div class="pedal selected" id="blk-AMP" onclick="loadBlock('AMP')">AMP</div>
-        <div class="pedal" id="blk-EQ"  onclick="loadBlock('EQ')">EQ</div>
-        <div class="pedal" id="blk-MOD" onclick="loadBlock('MOD')">MOD</div>
-        <div class="pedal" id="blk-DLY" onclick="loadBlock('DLY')">DLY</div>
-        <div class="pedal" id="blk-RVB" onclick="loadBlock('RVB')">RVB</div>
-        <div class="pedal" id="blk-IR"  onclick="loadBlock('IR')">IR</div>
-    </div>
-
-    <div class="controls">
-        <select class="model-select" id="modelSelect" onchange="renderKnobs()"><option>Loading...</option></select>
-        <div class="knob-grid" id="knobContainer"></div>
-    </div>
-
-    <footer>
-        <button class="btn" onclick="openModal()">Import Patch</button>
-        <button class="btn" onclick="exportPatch()">Export Patch</button>
-        <button class="btn btn-con" onclick="connectUSB()">CONNECT USB</button>
-    </footer>
-
-    <input type="file" id="fileIn" hidden onchange="processFile(this)" accept=".bin,.mg30patch,.syx">
-
-    <script>
-        const DB = {
-            'WAH': { 'Clyde':[{n:'POS',cc:10}], 'Cry Wah':[{n:'POS',cc:10}], 'V847':[{n:'POS',cc:10}] },
-            'CMP': { 'Rose':[{n:'SUST',cc:15},{n:'LVL',cc:16}], 'Studio':[{n:'THR',cc:15},{n:'RAT',cc:16},{n:'GAIN',cc:17}] },
-            'EFX': { 'Tube':[{n:'DRV',cc:20},{n:'TONE',cc:21},{n:'LVL',cc:22}], 'Dist+':[{n:'DST',cc:20},{n:'OUT',cc:22}], 'Rat':[{n:'DST',cc:20},{n:'FILT',cc:21},{n:'VOL',cc:22}] },
-            'AMP': { 
-                'Recto':[{n:'GAIN',cc:30},{n:'MST',cc:31},{n:'BASS',cc:32},{n:'MID',cc:33},{n:'TREB',cc:34},{n:'PRES',cc:35}],
-                'Jazz':[{n:'GAIN',cc:30},{n:'MST',cc:31},{n:'BASS',cc:32},{n:'MID',cc:33},{n:'TREB',cc:34}],
-                'Diezel':[{n:'GAIN',cc:30},{n:'MST',cc:31},{n:'BASS',cc:32},{n:'MID',cc:33},{n:'TREB',cc:34},{n:'DEEP',cc:36}],
-                'AC30':[{n:'GAIN',cc:30},{n:'MST',cc:31},{n:'BASS',cc:32},{n:'CUT',cc:33},{n:'TREB',cc:34}],
-                'Plexi':[{n:'GAIN',cc:30},{n:'MST',cc:31},{n:'BASS',cc:32},{n:'MID',cc:33},{n:'TREB',cc:34},{n:'PRES',cc:35}]
-            },
-            'EQ':  { '10-Band':[{n:'1K',cc:50},{n:'2K',cc:51},{n:'4K',cc:52}] },
-            'MOD': { 'Chorus':[{n:'RATE',cc:60},{n:'DPTH',cc:61}], 'Phaser':[{n:'RATE',cc:60},{n:'DPTH',cc:61}] },
-            'DLY': { 'Analog':[{n:'TIME',cc:70},{n:'MIX',cc:72}], 'Digital':[{n:'TIME',cc:70},{n:'MIX',cc:72}] },
-            'RVB': { 'Room':[{n:'DEC',cc:80},{n:'MIX',cc:82}], 'Hall':[{n:'DEC',cc:80},{n:'MIX',cc:82}], 'Plate':[{n:'DEC',cc:80},{n:'MIX',cc:82}] },
-            'IR':  { 'Cab':[{n:'LCUT',cc:91},{n:'HCUT',cc:92},{n:'LVL',cc:93}] }
-        };
-
-        let midiOut = null;
-        let currentPatch = 0;
-        let activeBlock = 'AMP';
-        let selectedSlot = 0;
-
-        loadBlock('AMP');
-        generateGrid();
-
-        function loadBlock(blk) {
-            activeBlock = blk;
-            document.querySelectorAll('.pedal').forEach(el => el.classList.remove('selected'));
-            document.getElementById('blk-'+blk).classList.add('selected');
-            const sel = document.getElementById('modelSelect');
-            sel.innerHTML = "";
-            const models = Object.keys(DB[blk] || {});
-            if(models.length > 0) {
-                models.forEach(m => sel.appendChild(new Option(m, m)));
-                sel.disabled = false;
-            } else {
-                sel.appendChild(new Option("NO MODELS")); sel.disabled = true;
+                let n = document.getElementById('lcd-name').innerText.trim();
+                saveBlob(d, n+".mg30patch");
+                waitingForExport = false;
+                alert("Exported!");
+                return;
             }
-            renderKnobs();
-        }
 
-        function renderKnobs() {
-            const con = document.getElementById('knobContainer');
-            con.innerHTML = "";
-            const model = document.getElementById('modelSelect').value;
-            const params = DB[activeBlock][model] || [];
-            params.forEach(p => {
-                let div = document.createElement('div');
-                div.className = 'knob-box';
-                div.innerHTML = `
-                    <svg class="knob" viewBox="0 0 100 100" onpointerdown="startDrag(event, ${p.cc})">
-                        <circle cx="50" cy="50" r="40" class="knob-track" />
-                        <circle cx="50" cy="50" r="40" class="knob-val" id="arc-${p.cc}" stroke-dasharray="200" stroke-dashoffset="100" transform="rotate(135 50 50)" />
-                        <line x1="50" y1="50" x2="50" y2="10" class="knob-ptr" id="ptr-${p.cc}" transform="rotate(0 50 50)" />
-                    </svg>
-                    <div class="knob-txt" id="txt-${p.cc}">50</div>
-                    <div class="knob-lbl">${p.n}</div>
-                `;
-                con.appendChild(div);
-            });
-        }
-
-        let isDrag=false, dragY=0, dragVal=50, dragCC=0;
-        function startDrag(e, cc) {
-            e.preventDefault(); e.target.setPointerCapture(e.pointerId);
-            isDrag = true; dragY = e.clientY; dragCC = cc;
-            const txt = document.getElementById('txt-'+cc);
-            dragVal = parseInt(txt.innerText);
-            e.target.onpointermove = (ev) => {
-                if(!isDrag) return;
-                dragVal = Math.max(0, Math.min(127, dragVal + (dragY - ev.clientY)));
-                updateVisuals(dragCC, dragVal);
-                if(midiOut) midiOut.send([0xB0, dragCC, dragVal]);
-                dragY = ev.clientY;
-            };
-            e.target.onpointerup = (ev) => { isDrag = false; e.target.onpointermove = null; e.target.releasePointerCapture(ev.pointerId); };
-        }
-
-        function updateVisuals(cc, val) {
-            const arc = document.getElementById('arc-'+cc);
-            const ptr = document.getElementById('ptr-'+cc);
-            const txt = document.getElementById('txt-'+cc);
-            if(arc) {
-                const angle = -135 + ((val / 127) * 270);
-                arc.style.strokeDashoffset = 200 - ((val / 127) * 200);
-                ptr.setAttribute('transform', `rotate(${angle} 50 50)`);
-                txt.innerText = val;
+            // PATCH CHANGE
+            if((d[0]&0xF0)===0xC0) {
+                curPatch = d[1];
+                updScreen();
+                setTimeout(askDump, 50);
             }
-        }
 
-        function connectUSB() {
-            if(!navigator.requestMIDIAccess) return alert("Use Chrome");
-            navigator.requestMIDIAccess({sysex: true}).then(midi => {
-                const outputs = Array.from(midi.outputs.values());
-                const inputs = Array.from(midi.inputs.values());
-                midiOut = outputs.find(o => o.name.includes("NUX")) || outputs[0];
-                const midiIn = inputs.find(i => i.name.includes("NUX")) || inputs[0];
-                if(midiOut && midiIn) {
-                    midiIn.onmidimessage = onMidiMsg;
-                    document.getElementById('statusLED').classList.add('active');
-                    document.getElementById('usbStatus').innerText = "LINKED";
-                    document.getElementById('usbStatus').style.color = "#0f0";
-                    midiOut.send([0xC0, currentPatch]);
-                    setTimeout(requestDump, 100);
-                    alert("Connected!");
-                } else alert("NUX MG-30 Not Found");
-            });
-        }
-
-        function requestDump() {
-            if(midiOut) midiOut.send([0xF0, 0x00, 0x00, 0x4F, 0x11, 0xF7]); // Request Patch Data
-        }
-
-        function onMidiMsg(e) {
-            const d = e.data;
-            if((d[0] & 0xF0) === 0xC0) { // PC
-                currentPatch = d[1];
-                updateLCD(currentPatch);
-                setTimeout(requestDump, 50);
-            }
-            if(d[0] === 0xF0 && d.length > 20) { // SysEx Dump
-                decodeName(d);
-            }
-        }
-
-        function decodeName(data) {
-            // NUX names typically reside around byte 10-26 in the dump.
-            // We strip non-printable chars.
-            let name = "";
-            let foundText = false;
-            for(let i=10; i<data.length-5; i++) {
-                if(data[i] >= 32 && data[i] <= 126) {
-                    name += String.fromCharCode(data[i]);
-                    foundText = true;
-                } else if (foundText) {
-                    // Stop if we hit a null/control char after finding text
-                    break; 
+            // NAME DECODE
+            if(d[0]===0xF0 && d.length>20) {
+                if(scanMode) {
+                    let name = parseName(d);
+                    let el = document.getElementById('s-'+scanIndex);
+                    if(el) el.innerHTML = `<strong>${(scanIndex+1)+getSub(scanIndex)}</strong><br>${name}`;
+                    scanIndex++;
+                    scanNext();
+                } else {
+                    document.getElementById('lcd-name').innerText = parseName(d);
                 }
             }
-            // Clean up common NUX garbage chars
-            name = name.replace(/[^a-zA-Z0-9 -]/g, "").trim();
-            if(name.length > 0) document.getElementById('lcdName').innerText = name;
         }
 
-        function changePatch(dir) {
-            currentPatch = Math.max(0, Math.min(127, currentPatch + dir));
-            updateLCD(currentPatch);
-            if(midiOut) {
-                midiOut.send([0xC0, currentPatch]);
-                setTimeout(requestDump, 100);
+        function parseName(d) {
+            let s = ""; let found = false;
+            for(let i=10; i<d.length-5; i++) {
+                if(d[i]>=32 && d[i]<=126) { s+=String.fromCharCode(d[i]); found=true; }
+                else if(found) break; 
             }
+            return s.length>0 ? s : "PATCH";
         }
 
-        function updateLCD(n) {
-            const b = Math.floor(n/4)+1;
-            const s = ['A','B','C','D'][n%4];
-            document.getElementById('lcdNum').innerText = (b<10?'0'+b:b)+s;
+        // ===========================================
+        // 6. FEATURES
+        // ===========================================
+        function nav(dir) {
+            curPatch += dir;
+            if(curPatch>127) curPatch=0; if(curPatch<0) curPatch=127;
+            updScreen();
+            if(midiOut) { midiOut.send([0xC0, curPatch]); setTimeout(askDump, 100); }
         }
 
-        function openModal() { document.getElementById('patchModal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('patchModal').style.display = 'none'; }
+        function updScreen() {
+            let b = Math.floor(curPatch/4)+1;
+            let s = ['A','B','C','D'][curPatch%4];
+            document.getElementById('lcd-num').innerText = (b<10?'0'+b:b)+s;
+        }
         
-        function generateGrid() {
-            const g = document.getElementById('patchGrid');
-            for(let i=0; i<32; i++) {
-                ['A','B','C','D'].forEach((s,x)=>{
-                    let idx = (i*4)+x;
-                    let div = document.createElement('div');
-                    div.className = 'slot';
-                    div.innerText = (i+1)+s;
-                    div.onclick = () => { selectedSlot=idx; document.getElementById('fileIn').click(); };
-                    g.appendChild(div);
-                });
+        function getSub(i) { return ['A','B','C','D'][i%4]; }
+
+        function openModal() { document.getElementById('modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        function makeGrid() {
+            const g = document.getElementById('grid');
+            for(let i=0; i<128; i++) {
+                let d = document.createElement('div');
+                d.className = 'slot';
+                d.id = 's-'+i;
+                let b = Math.floor(i/4)+1;
+                let s = ['A','B','C','D'][i%4];
+                d.innerHTML = `<strong>${b+s}</strong><br>---`;
+                d.onclick = () => { selSlot=i; document.getElementById('fileInput').click(); };
+                g.appendChild(d);
             }
         }
 
-        // REAL FILE IMPORT LOGIC
-        function processFile(input) {
-            const file = input.files[0];
-            if(!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const rawData = new Uint8Array(e.target.result);
+        function fileHandler(inp) {
+            let f = inp.files[0];
+            if(!f) return;
+            let r = new FileReader();
+            r.onload = (e) => {
+                let dat = new Uint8Array(e.target.result);
                 if(midiOut) {
-                    if(confirm(`Overwrite Slot ${selectedSlot} with imported data?`)) {
-                        // 1. Switch to Target Slot
-                        midiOut.send([0xC0, selectedSlot]);
-                        
-                        // 2. Send the Raw SysEx Data (The actual patch)
-                        // Allow small delay for slot switch
-                        setTimeout(() => {
+                    if(confirm("Overwrite slot "+selSlot+"?")) {
+                        midiOut.send([0xC0, selSlot]);
+                        setTimeout(()=>{
                             try {
-                                midiOut.send(rawData);
-                                alert("Patch Data Sent! (Please Save on Device if needed)");
-                                currentPatch = selectedSlot;
-                                updateLCD(currentPatch);
-                                setTimeout(requestDump, 500); // Refresh screen
-                            } catch(err) {
-                                alert("Error sending data. File might be invalid.");
-                            }
+                                midiOut.send(dat);
+                                curPatch=selSlot;
+                                updScreen();
+                                setTimeout(askDump,300);
+                                alert("Imported!");
+                            } catch(e){alert("Error");}
                         }, 200);
                     }
-                } else {
-                    alert("Connect USB First");
-                }
+                } else alert("Connect USB");
             };
-            reader.readAsArrayBuffer(file);
+            r.readAsArrayBuffer(f);
             closeModal();
-            input.value = '';
+            inp.value='';
         }
 
-        function exportPatch() {
-            if(!midiOut) return alert("Connect USB First");
-            alert("To export: This requires receiving the full SysEx blob. Currently checking console for data dump.");
-            requestDump();
+        function doExport() {
+            if(!midiOut) return alert("Connect USB");
+            if(confirm("Download?")) {
+                waitingForExport = true;
+                askDump();
+            }
+        }
+
+        function saveBlob(d, n) {
+            let b = new Blob([d], {type:'application/octet-stream'});
+            let u = URL.createObjectURL(b);
+            let a = document.createElement('a'); a.href=u; a.download=n;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        function scanNames() {
+            if(!midiOut) return alert("Connect USB");
+            scanMode = true; scanIndex = 0;
+            alert("Scanning... Please wait 20s");
+            scanNext();
+        }
+
+        function scanNext() {
+            if(scanIndex > 127) {
+                scanMode = false;
+                midiOut.send([0xC0, curPatch]);
+                return;
+            }
+            midiOut.send([0xC0, scanIndex]);
+            setTimeout(askDump, 150);
         }
 
     </script>
