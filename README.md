@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NUX MG-30 FINAL V45 (NAME SEARCHER)</title>
+    <title>NUX EDITOR V47 (LOGIC FIXED)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500;700&display=swap');
         
-        :root { --bg:#121212; --gold:#D4AF37; --text:#e0e0e0; --accent:#00E676; --danger:#FF1744; --panel:#1a1a1a; }
+        :root { --bg:#121212; --gold:#D4AF37; --text:#e0e0e0; --accent:#00E676; --panel:#1a1a1a; }
         * { box-sizing:border-box; user-select:none; touch-action:none; }
         body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; margin:0; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -20,87 +20,67 @@
 
         /* LCD DISPLAY */
         .top-deck { background:#151515; padding:20px 0; border-bottom:2px solid #2a2a2a; z-index:10; display:flex; flex-direction:column; align-items:center; box-shadow:0 10px 40px rgba(0,0,0,0.6); flex-shrink:0; }
-        
         .lcd-frame { 
             width:340px; height:100px; background:#000; border:4px solid #333; border-radius:8px; 
             display:flex; flex-direction:row; align-items:center; padding:0 20px; gap:20px;
             box-shadow:inset 0 0 30px rgba(30,30,30,0.8); position:relative;
         }
-        
         .patch-num { font-family:'JetBrains Mono'; font-size:3.5rem; color:var(--gold); font-weight:700; line-height:1; text-shadow:0 0 20px rgba(212,175,55,0.4); min-width:100px; text-align:center; }
         .patch-name { font-family:'Inter'; font-size:1.4rem; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; }
         
         .nav-row { display:flex; gap:15px; width:340px; margin-top:12px; }
+        
+        /* LOCKED BUTTONS */
         .btn-nav { flex:1; height:40px; background:#222; border:1px solid #333; color:#888; border-radius:6px; font-weight:700; cursor:pointer; font-size:14px; transition:0.2s; }
         .btn-nav:hover { background:#333; color:#fff; border-color:#555; }
-        .btn-nav:active { background:#555; transform:translateY(2px); }
+        .btn-nav:disabled { opacity:0.3; cursor:not-allowed; background:#111; color:#444; border-color:#222; }
 
-        /* SIGNAL CHAIN */
+        /* CHAIN */
         .chain-container { 
             height:90px; width:100%; max-width:100%; background:#111; border-top:1px solid #222; border-bottom:1px solid #222;
             display:flex; align-items:center; justify-content:center; gap:10px; padding:0 20px; overflow-x:auto; margin-top:0;
         }
-        
         .pedal-block { 
             width:70px; height:60px; background:#222; border:2px solid #333; border-radius:6px; 
             display:flex; flex-direction:column; justify-content:center; align-items:center; 
             font-size:11px; font-weight:800; color:#666; cursor:pointer; position:relative; transition:0.2s;
         }
         .pedal-block:hover { background:#2a2a2a; border-color:#444; }
-        
-        /* ACTIVE & SELECTED STATES */
         .pedal-block.on { background:linear-gradient(180deg, #2a2a2a, #1a1a1a); border-color:#666; color:#fff; }
-        .pedal-block.on::after { 
-            content:''; position:absolute; top:8px; width:8px; height:8px; border-radius:50%; 
-            background:var(--accent); box-shadow:0 0 10px var(--accent); 
-        }
+        .pedal-block.on::after { content:''; position:absolute; top:8px; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); }
         .pedal-block.selected { border-color:var(--gold); transform:translateY(-5px); box-shadow:0 10px 20px rgba(0,0,0,0.5); z-index:5; color:var(--gold); }
 
         /* STAGE */
         .stage { flex:1; background:#121212; padding:40px; display:flex; flex-direction:column; align-items:center; overflow-y:auto; }
+        .model-selector { background:#1a1a1a; color:var(--gold); border:2px solid #333; padding:12px 40px; font-family:'JetBrains Mono'; border-radius:40px; outline:none; font-weight:700; font-size:16px; text-transform:uppercase; cursor:pointer; width:100%; max-width:400px; margin-bottom:30px; box-shadow:0 5px 20px rgba(0,0,0,0.4); text-align:center; }
+        .pedal-chassis { width:100%; max-width:1100px; background:#181818; border-radius:16px; padding:40px; display:flex; flex-wrap:wrap; justify-content:center; gap:35px; border:2px solid #333; box-shadow:0 20px 60px rgba(0,0,0,0.6); position:relative; }
         
-        .model-selector { 
-            background:#1a1a1a; color:var(--gold); border:2px solid #333; padding:12px 40px; 
-            font-family:'JetBrains Mono'; border-radius:40px; outline:none; font-weight:700; font-size:16px;
-            text-transform:uppercase; cursor:pointer; width:100%; max-width:400px; margin-bottom:30px; 
-            box-shadow:0 5px 20px rgba(0,0,0,0.4); text-align:center;
-        }
-
-        .pedal-chassis { 
-            width:100%; max-width:1100px; background:#181818; border-radius:16px; padding:40px; 
-            display:flex; flex-wrap:wrap; justify-content:center; gap:35px; 
-            border:2px solid #333; box-shadow:0 20px 60px rgba(0,0,0,0.6); position:relative;
-        }
-
         .knob-group { display:flex; flex-direction:column; align-items:center; width:90px; }
         svg.knob-svg { width:80px; height:80px; cursor:ns-resize; filter:drop-shadow(0 5px 10px rgba(0,0,0,0.5)); }
         .knob-path { fill:none; stroke:var(--gold); stroke-width:7; stroke-linecap:round; }
         .knob-val-text { font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:rgba(255,255,255,0.95); margin:8px 0 4px 0; }
         .knob-label { font-size:11px; font-weight:900; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; }
 
-        /* FOOTER */
         footer { height:70px; background:#080808; border-top:1px solid #333; display:flex; gap:20px; padding:0 40px; align-items:center; justify-content:center; flex-shrink:0; }
         .btn-main { width:160px; height:45px; background:#1a1a1a; border:1px solid #333; color:#aaa; font-size:12px; font-weight:900; border-radius:8px; cursor:pointer; letter-spacing:1px; transition:0.2s; display:flex; align-items:center; justify-content:center; }
-        .btn-main:hover { background:#252525; color:#fff; border-color:#666; }
         .btn-connect { color:var(--accent); background:rgba(0,230,118,0.05); border-color:rgba(0,230,118,0.3); }
-        .btn-connect:hover { background:rgba(0,230,118,0.15); box-shadow:0 0 20px rgba(0,230,118,0.2); }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">NUX <span>EDITOR V45</span></div>
+        <div class="logo">NUX <span>EDITOR V47</span></div>
         <div class="status-light" id="connStatus"></div>
     </header>
 
     <div class="top-deck">
         <div class="lcd-frame">
             <div class="patch-num" id="pNum">--</div>
-            <div class="patch-name" id="pName">WAITING...</div>
+            <div class="patch-name" id="pName">READY</div>
         </div>
         <div class="nav-row">
-            <button class="btn-nav" onclick="changePatch(-1)">◀ PREV PATCH</button>
-            <button class="btn-nav" onclick="changePatch(1)">NEXT PATCH ▶</button>
+            <button id="btnPrev" class="btn-nav" disabled onclick="changePatch(-1)">◀ PREV PATCH</button>
+            <button id="btnNext" class="btn-nav" disabled onclick="changePatch(1)">NEXT PATCH ▶</button>
         </div>
         <div class="chain-container" id="chainUI"></div>
     </div>
@@ -122,11 +102,12 @@
     // 1. CONFIGURATION
     // ==========================================
     
-    // FINAL ORDER: WAH, CMP, GATE, EFX, AMP, IR, EQ, MOD, DLY, RVB
+    // FINAL ORDER
     const CHAIN_ORDER = ['WAH', 'CMP', 'GATE', 'EFX', 'AMP', 'IR', 'EQ', 'MOD', 'DLY', 'RVB'];
     
+    // *** FIX: SWAPPED WAH (89) AND IR (9) BASED ON USER TEST ***
     const BLOCKS = {
-        'WAH': { cc:9,  sel:1,  start:10, b_offset: 12 }, 
+        'WAH': { cc:89, sel:1,  start:10, b_offset: 72 }, // Corrected based on IR=9
         'CMP': { cc:14, sel:2,  start:15, b_offset: 20 },
         'GATE':{ cc:39, sel:3,  start:40, b_offset: 60 },
         'EFX': { cc:19, sel:4,  start:20, b_offset: 24 },
@@ -134,8 +115,8 @@
         'EQ':  { cc:44, sel:6,  start:45, b_offset: 40 },
         'MOD': { cc:59, sel:7,  start:60, b_offset: 48 }, 
         'DLY': { cc:69, sel:8,  start:70, b_offset: 56 },
-        'RVB': { cc:79, sel:9,  start:80, b_offset: 64 }, 
-        'IR':  { cc:89, sel:10, start:90, b_offset: 72 }
+        'RVB': { cc:79, sel:9,  start:80, b_offset: 64 }, // Standard Reverb
+        'IR':  { cc:9,  sel:10, start:90, b_offset: 12 }  // Corrected based on user feedback
     };
 
     const DB = {
@@ -168,11 +149,22 @@
             if(midiOut) {
                 document.getElementById('connStatus').className = 'status-light connected';
                 document.getElementById('pName').innerText = "LINKED!";
+                
+                // UNLOCK BUTTONS (Logic Fix)
+                document.getElementById('btnPrev').disabled = false;
+                document.getElementById('btnNext').disabled = false;
+
                 const inputs = Array.from(access.inputs.values());
                 const inp = inputs.find(i => i.name.toUpperCase().includes("NUX") || i.name.toUpperCase().includes("MG")) || inputs[0];
                 if(inp) inp.onmidimessage = onMidiMsg;
-                midiOut.send([0xF0, 0x00, 0x00, 0x4F, 0x11, 0xF7]); // Handshake
-                setTimeout(() => changePatch(0), 500); 
+                
+                // Force Editor Mode
+                midiOut.send([0xF0, 0x00, 0x00, 0x4F, 0x11, 0xF7]);
+                
+                // FORCE READ (Green Light Sync)
+                setTimeout(() => {
+                   changePatch(0); // This triggers a refresh of the current patch
+                }, 500); 
             } else { alert("No NUX Device Found!"); }
         });
     }
@@ -184,7 +176,6 @@
         const led = document.getElementById('connStatus');
         led.classList.add('rx'); setTimeout(() => led.classList.remove('rx'), 50);
 
-        // A. OMNI-CHANNEL LISTENER (Fixes "Missing" Buttons)
         if (cmd === 0xB0) {
             // Check Bypass
             for (let id in BLOCKS) {
@@ -203,61 +194,51 @@
                     }
                 }
             }
-            // Check Knobs
             stateKnobs[d1] = d2;
             updateKnobVisual(d1, d2);
         }
 
-        // B. PATCH CHANGE
         if (cmd === 0xC0) {
             currentPatchID = d1;
             renderPatchNum();
             if(midiOut) midiOut.send([0xF0, 0x00, 0x00, 0x4F, 0x11, 0xF7]);
         }
 
-        // C. SHERLOCK SCANNER (Auto-Finds Name)
         if (status === 0xF0) {
             parseSysex(e.data);
         }
     }
 
     function parseSysex(raw) {
-        // 1. SHERLOCK: Find the Name
+        // Name Search
         let currentStr = "";
         let foundStrings = [];
         for(let i=0; i<raw.length; i++) {
             let c = raw[i];
-            if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 32 || c === 45) {
+            if ((c >= 32 && c <= 126)) {
                 currentStr += String.fromCharCode(c);
             } else {
                 if(currentStr.length > 3) foundStrings.push(currentStr);
                 currentStr = "";
             }
         }
-        
-        // Pick longest string as name (Heuristic)
         if(foundStrings.length > 0) {
             foundStrings.sort((a,b) => b.length - a.length);
             document.getElementById('pName').innerText = foundStrings[0];
         }
 
-        // 2. EXTRACT DEEP DATA (Green Lights)
+        // DEEP SYNC (Green Lights)
         for (let id in BLOCKS) {
             let blk = BLOCKS[id];
-            
-            // Safety Check: Is data long enough?
             if (raw.length > blk.b_offset + 5) {
-                // A. Status
                 let statusByte = raw[blk.b_offset + 1];
                 stateBypass[id] = statusByte > 0;
-
-                // B. Model
+                
                 let modelIdx = raw[blk.b_offset];
                 const availModels = Object.keys(DB[id].models);
                 const foundModel = availModels[modelIdx % availModels.length] || availModels[0];
                 stateModels[id] = foundModel;
 
-                // C. Knobs
                 const paramList = DB[id].models[foundModel];
                 if (paramList) {
                     paramList.forEach((p, pIdx) => {
@@ -269,7 +250,6 @@
                 }
             }
         }
-
         renderChain();
         renderKnobs();
     }
@@ -281,6 +261,8 @@
             if(midiOut) midiOut.send([0xC0, currentPatchID]);
         }
         renderPatchNum();
+        // FORCE READ ON PATCH CHANGE
+        if(midiOut) midiOut.send([0xF0, 0x00, 0x00, 0x4F, 0x11, 0xF7]);
     }
 
     function renderPatchNum() {
