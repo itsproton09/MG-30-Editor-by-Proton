@@ -3,184 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MG-30 COMMAND V12</title>
+    <title>MG-30 TOTAL SYNC</title>
     <style>
-        :root { --gold: #D4AF37; --bg: #000; --active: #00E676; --panel: #121212; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', sans-serif; }
-        body { background: var(--bg); color: white; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --gold: #D4AF37; --bg: #000; --lcd: #050505; --green: #00E676; --red: #FF3D00; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* Patch Display - Focus on Visibility */
-        .patch-header { padding: 20px; background: #000; border-bottom: 2px solid var(--gold); }
-        .lcd { background: #050505; padding: 15px; border-radius: 12px; border: 1px solid #333; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 0 20px rgba(212,175,55,0.05); }
-        .p-num { color: var(--gold); font-family: monospace; font-size: 3.5rem; font-weight: 900; line-height: 1; margin-right: 15px; }
-        .p-meta { flex: 1; text-align: right; }
-        .p-name { color: #fff; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .p-stat { font-size: 10px; color: var(--active); font-weight: bold; margin-top: 5px; }
+        /* LCD Header */
+        .lcd-panel { background: #1a1a1b; padding: 15px; border-bottom: 2px solid #333; }
+        .lcd { background: var(--lcd); border: 1px solid #444; border-radius: 6px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--gold); }
+        .p-num { font-size: 3rem; color: var(--gold); font-family: monospace; font-weight: 900; line-height: 1; }
+        .p-name { font-size: 1.2rem; font-weight: bold; color: #fff; text-transform: uppercase; }
 
-        /* Master Slider (Global Output) */
-        .master-strip { background: #111; padding: 15px; border-bottom: 1px solid #222; }
-        .slider { width: 100%; height: 40px; accent-color: var(--gold); cursor: pointer; }
+        /* Signal Chain */
+        .chain-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; background: #080808; border-bottom: 1px solid #222; }
+        .block { height: 50px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #777; cursor: pointer; position: relative; }
+        
+        .led { width: 7px; height: 7px; border-radius: 50%; margin-bottom: 4px; transition: background 0.3s; }
+        .led-on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .led-off { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        
+        /* Blinking logic for Selected Block */
+        .selected .led { animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        /* Signal Blocks - All 11 Visible */
-        .chain-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; background: #080808; }
-        .block { height: 50px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; color: #444; text-align: center; cursor: pointer; }
-        .block.on { border-color: var(--active); color: #fff; background: #0e1d0e; box-shadow: 0 0 10px rgba(0,230,118,0.2); }
-        .block.selected { border-color: var(--gold); color: var(--gold); background: #222; }
+        .block.engaged { color: #fff; }
+        .block.selected { border: 2px solid var(--gold); background: #222; }
 
-        /* Control Area */
-        .scroll-area { flex: 1; overflow-y: auto; padding: 15px; background: #000; }
-        .card { background: var(--panel); border: 1px solid #222; border-radius: 10px; padding: 15px; margin-bottom: 12px; }
+        /* Knobs */
+        .knob-workspace { flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; justify-items: center; align-content: start; }
+        .knob-wrapper { text-align: center; width: 85px; }
+        .knob-outer { width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, #444 0%, #222 100%); border: 3px solid #333; position: relative; margin: 0 auto 8px auto; touch-action: none; }
+        .knob-indicator { position: absolute; width: 4px; height: 15px; background: var(--gold); left: 50%; top: 5px; transform-origin: 50% 25px; transform: translateX(-50%) rotate(-135deg); border-radius: 2px; }
+        .knob-label { font-size: 9px; color: #999; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+        .knob-value { font-size: 12px; color: var(--gold); font-family: monospace; font-weight: bold; }
 
-        /* Navigation Footer */
-        footer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 15px; background: #000; border-top: 1px solid #222; }
-        .nav-btn { padding: 18px 5px; background: #1a1a1a; border: 1px solid #444; color: white; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
-        .nav-btn:active { background: #333; transform: translateY(2px); }
-        .btn-link { background: var(--gold); color: #000; border: none; }
+        footer { background: #111; padding: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border-top: 1px solid #333; }
+        .btn { padding: 15px 5px; background: #333; border: 1px solid #555; color: #FFF; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; cursor: pointer; }
+        .btn-gold { background: var(--gold); color: #000; border: none; }
     </style>
 </head>
 <body>
 
-<div class="patch-header">
+<div class="lcd-panel">
     <div class="lcd">
         <div id="ui-num" class="p-num">--</div>
         <div class="p-meta">
             <div id="ui-name" class="p-name">DISCONNECTED</div>
-            <div id="ui-stat" class="p-stat">TAP LINK TO BEGIN</div>
+            <div id="ui-sync-msg" style="font-size:9px; color:var(--gold); font-weight:bold;">READY TO LINK</div>
         </div>
     </div>
 </div>
 
-<div class="master-strip">
-    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; color:var(--gold); margin-bottom:5px;">
-        <span>GLOBAL MASTER (CC#12)</span><span id="m-val">100</span>
-    </div>
-    <input type="range" class="slider" min="0" max="127" value="100" oninput="updateMaster(this.value)">
-</div>
-
 <div class="chain-grid" id="ui-chain"></div>
-
-<div class="scroll-area" id="ui-params">
-    <div style="text-align:center; margin-top:60px; color:#333; font-weight:bold;">
-        PLEASE CONNECT VIA USB OTG
-    </div>
-</div>
+<div class="knob-workspace" id="ui-params"></div>
 
 <footer>
-    <button class="nav-btn btn-link" onclick="connect()">LINK</button>
-    <button class="nav-btn" onclick="fetchPatchData()">SYNC</button>
-    <button class="nav-btn" onclick="changePatch(-1)">PREV</button>
-    <button class="nav-btn" onclick="changePatch(1)">NEXT</button>
+    <div class="btn btn-gold" onclick="initMIDI()">Link</div>
+    <div class="btn" onclick="syncData()">Sync</div>
+    <div class="btn" onclick="patchChange(-1)">Prev</div>
+    <div class="btn" onclick="patchChange(1)">Next</div>
 </footer>
 
 <script>
-    let mOut, mIn, currentPatch = 0, activeBlock = 'AMP';
-    
+    let mOut, mIn, pNum = 0, activeBlock = 'AMP';
     const BLOCKS = {
-        'WAH':  {cc:89, id:1, s:10, p:['Pos','Mix','Vol']},
-        'CMP':  {cc:14, id:2, s:15, p:['Sust','Lvl','Clip']},
-        'GATE': {cc:39, id:3, s:40, p:['Thr','Ran','Rel']},
-        'EFX':  {cc:19, id:4, s:20, p:['Gain','Lvl','Tone']},
-        'AMP':  {cc:29, id:5, s:30, p:['Gain','Mast','Bass','Mid','Tre']},
-        'EQ':   {cc:44, id:6, s:45, p:['100H','400H','1.6K','3.2K']},
-        'MOD':  {cc:59, id:7, s:60, p:['Rate','Mix','Dep']},
-        'DLY':  {cc:69, id:8, s:70, p:['Time','Rpt','Mix']},
-        'RVB':  {cc:79, id:9, s:80, p:['Dcy','Mix','Tone']},
-        'IR':   {cc:9,  id:10,s:90, p:['Lvl','H-Cut','L-Cut']},
-        'S/R':  {cc:34, id:11,s:35, p:['Snd','Rtn']}
+        'WAH': {id:1, cc:89, s:10, p:['Pos','Mix','Vol']},
+        'CMP': {id:2, cc:14, s:15, p:['Sust','Lvl','Clip']},
+        'GATE':{id:3, cc:39, s:40, p:['Thr','Ran','Rel']},
+        'EFX': {id:4, cc:19, s:20, p:['Gain','Lvl','Tone']},
+        'AMP': {id:5, cc:29, s:30, p:['Gain','Mast','Bass','Mid','Tre','Pres']},
+        'EQ':  {id:6, cc:44, s:45, p:['100H','400H','1.6K','3.2K']},
+        'MOD': {id:7, cc:59, s:60, p:['Rate','Dep','Mix','Tone']},
+        'DLY': {id:8, cc:69, s:70, p:['Time','Rpt','Mix','Mod']},
+        'RVB': {id:9, cc:79, s:80, p:['Dcy','Mix','Tone','Dmp']},
+        'IR':  {id:10,cc:9,  s:90, p:['Lvl','H-Cut','L-Cut']},
+        'S/R': {id:11,cc:34, s:35, p:['Snd','Rtn']}
     };
 
-    let states = { bypass: {} };
+    let bypassMap = {}; 
+    let midiValues = {};
 
-    async function connect() {
+    async function initMIDI() {
         try {
             const access = await navigator.requestMIDIAccess({ sysex: true });
-            const outputs = Array.from(access.outputs.values());
-            mOut = outputs.find(o => /MG-30|NUX/i.test(o.name));
-            
+            mOut = Array.from(access.outputs.values()).find(o => /MG-30|NUX/i.test(o.name));
             if (mOut) {
-                const inputs = Array.from(access.inputs.values());
-                mIn = inputs.find(i => i.name === mOut.name) || inputs[0];
-                mIn.onmidimessage = handleIncomingMIDI;
-                document.getElementById('ui-stat').innerText = "CONNECTED";
-                fetchPatchData();
-            } else { alert("NUX MG-30 Hardware Not Detected."); }
-        } catch(e) { alert("Web MIDI blocked. Use HTTPS or Chrome."); }
+                mIn = Array.from(access.inputs.values()).find(i => i.name === mOut.name);
+                mIn.onmidimessage = (m) => handleSysex(m.data);
+                document.getElementById('ui-sync-msg').innerText = "LINKED & SYNCING...";
+                syncData(); // Instant Auto-Sync on Link
+            } else { alert("Hardware not found."); }
+        } catch(e) { alert("MIDI Permission denied."); }
     }
 
-    function handleIncomingMIDI(msg) {
-        const d = msg.data;
-        // MG-30 SysEx Identity Reply (F0 ... F7)
+    function handleSysex(d) {
         if (d[0] === 0xF0 && d[3] === 0x4F) {
-            currentPatch = d[12];
-            document.getElementById('ui-num').innerText = currentPatch.toString().padStart(2, '0');
+            pNum = d[12];
+            document.getElementById('ui-num').innerText = pNum.toString().padStart(2, '0');
             
             let name = "";
             for (let i = 14; i < 26; i++) if (d[i] > 31) name += String.fromCharCode(d[i]);
-            document.getElementById('ui-name').innerText = name.trim() || "UNTITLED";
+            document.getElementById('ui-name').innerText = name.trim() || "PATCH";
             
+            // Critical: Audits the hardware's bypass states (V5 offset map)
             Object.keys(BLOCKS).forEach(key => {
-                const offset = 32 + (BLOCKS[key].id * 2);
-                states.bypass[key] = d[offset] > 0;
+                const id = BLOCKS[key].id;
+                bypassMap[key] = d[32 + (id * 2)] > 0;
             });
-            render();
+            
+            document.getElementById('ui-sync-msg').innerText = "HARDWARE SYNCED";
+            renderUI();
         }
     }
 
-    function render() {
+    function renderUI() {
         const chain = document.getElementById('ui-chain');
         chain.innerHTML = '';
         Object.keys(BLOCKS).forEach(key => {
+            const isEngaged = bypassMap[key];
             const div = document.createElement('div');
-            div.className = `block ${states.bypass[key] ? 'on' : ''} ${activeBlock === key ? 'selected' : ''}`;
-            div.innerText = key;
+            div.className = `block ${isEngaged ? 'engaged' : ''} ${activeBlock === key ? 'selected' : ''}`;
+            
+            const led = document.createElement('div');
+            led.className = `led ${isEngaged ? 'led-on' : 'led-off'}`;
+            
+            div.appendChild(led);
+            div.appendChild(Object.assign(document.createElement('span'), {innerText: key}));
+
             div.onclick = () => {
                 if(activeBlock === key) {
-                    states.bypass[key] = !states.bypass[key];
-                    sendCC(49, BLOCKS[key].id); 
-                    sendCC(BLOCKS[key].cc, states.bypass[key] ? 127 : 0);
+                    bypassMap[key] = !bypassMap[key];
+                    sendMIDI(49, BLOCKS[key].id);
+                    sendMIDI(BLOCKS[key].cc, bypassMap[key] ? 127 : 0);
                 }
                 activeBlock = key;
-                sendCC(49, BLOCKS[key].id); 
-                render();
+                sendMIDI(49, BLOCKS[key].id);
+                renderUI();
             };
             chain.appendChild(div);
         });
 
         const params = document.getElementById('ui-params');
-        params.innerHTML = `<div style="font-size:11px; color:var(--gold); margin-bottom:15px; font-weight:bold;">EDITING: ${activeBlock}</div>`;
+        params.innerHTML = '';
         BLOCKS[activeBlock].p.forEach((label, i) => {
             const cc = BLOCKS[activeBlock].s + i;
-            params.innerHTML += `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:8px;"><span>${label}</span></div>
-                    <input type="range" class="slider" min="0" max="127" oninput="sendCC(${cc}, this.value)">
-                </div>`;
+            params.appendChild(createKnob(label, cc, midiValues[cc] || 64));
         });
     }
 
-    function updateMaster(v) {
-        document.getElementById('m-val').innerText = v;
-        sendCC(12, v); 
+    function createKnob(label, cc, startM) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'knob-wrapper';
+        const toPct = (m) => Math.round((m / 127) * 100);
+        wrapper.innerHTML = `
+            <div class="knob-label">${label}</div>
+            <div class="knob-outer" id="k-${cc}"><div class="knob-indicator" id="ind-${cc}"></div></div>
+            <div class="knob-value"><span id="val-${cc}">${toPct(startM)}</span>%</div>
+        `;
+
+        const knob = wrapper.querySelector('.knob-outer');
+        let startY, startVal;
+
+        const update = (m) => {
+            m = Math.max(0, Math.min(127, m));
+            midiValues[cc] = m;
+            document.getElementById(`val-${cc}`).innerText = toPct(m);
+            const deg = (m / 127) * 270 - 135;
+            document.getElementById(`ind-${cc}`).style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            sendMIDI(cc, m);
+        };
+
+        knob.onpointerdown = e => {
+            startY = e.clientY; startVal = midiValues[cc] || 64;
+            knob.setPointerCapture(e.pointerId);
+            knob.onpointermove = ev => update(startVal + Math.round((startY - ev.clientY) / 1.5));
+        };
+        knob.onpointerup = () => knob.onpointermove = null;
+        update(startM); // Initial set
+        return wrapper;
     }
 
-    function sendCC(c, v) { if(mOut) mOut.send([0xB0, c, v]); }
+    function sendMIDI(c, v) { if(mOut) mOut.send([0xB0, c, v]); }
+    function syncData() { if(mOut) mOut.send([0xF0, 0x00, 0x01, 0x4F, 0x11, 0x01, 0x00, 0x00, 0xF7]); }
     
-    function fetchPatchData() { 
-        if(mOut) mOut.send([0xF0, 0x00, 0x01, 0x4F, 0x11, 0x01, 0x00, 0x00, 0xF7]); 
+    function patchChange(dir) {
+        pNum = Math.max(0, Math.min(127, pNum + dir));
+        if(mOut) mOut.send([0xC0, pNum]);
+        document.getElementById('ui-sync-msg').innerText = "LOADING...";
+        setTimeout(syncData, 300); // 300ms delay to allow hardware engine to cycle
     }
 
-    function changePatch(dir) {
-        if(!mOut) return;
-        currentPatch += dir;
-        if(currentPatch < 0) currentPatch = 0;
-        if(currentPatch > 127) currentPatch = 127;
-        
-        // Send Program Change [Status, PatchNumber]
-        mOut.send([0xC0, currentPatch]);
-        
-        // Wait for hardware to load patch before requesting name/data
-        setTimeout(fetchPatchData, 200);
-    }
+    renderUI(); // Render dummy UI on load
 </script>
 </body>
 </html>
