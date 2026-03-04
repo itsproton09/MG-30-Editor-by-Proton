@@ -3,119 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUX MG-30 Data Extractor</title>
+    <title>MG-30 QuickTone Editor</title>
     <style>
-        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; display: flex; flex-direction: column; height: 90vh; }
-        h1 { color: #fff; text-align: center; }
-        .btn { background: #333; color: white; border: 1px solid #555; padding: 15px; width: 100%; font-size: 1.2rem; margin-bottom: 10px; cursor: pointer; }
-        .btn.active { background: #00aa00; }
-        .btn.copy { background: #0088ff; border-color: #0055aa; margin-top: auto; }
-        #status { text-align: center; margin-bottom: 15px; color: #aaa; }
-        #log-container { flex: 1; border: 1px solid #333; background: #000; overflow-y: scroll; padding: 10px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
-        .entry { border-bottom: 1px solid #222; padding: 2px 0; }
-        .cc { color: #ffcc00; } /* Control Change (Knobs) */
-        .pc { color: #00ccff; } /* Patch Change (Presets) */
-        .sysex { color: #ff5555; } /* System Exclusive (Deep Data) */
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background-color: #121212; 
+            color: #ffffff; 
+            padding: 20px; 
+            text-align: center; 
+            margin: 0;
+        }
+        .container { 
+            max-width: 100%; 
+            background: #1e1e1e; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
+        .btn { 
+            background-color: #2196f3; 
+            color: white; 
+            border: none; 
+            padding: 18px 20px; /* Large touch targets for mobile */
+            margin: 10px 0; 
+            width: 100%; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background-color 0.2s;
+        }
+        .btn:active { background-color: #1976d2; }
+        .btn:disabled { background-color: #555; color: #888; cursor: not-allowed; }
+        .btn-success { background-color: #4CAF50; }
+        .btn-success:active { background-color: #388E3C; }
+        .btn-warning { background-color: #FF9800; }
+        .btn-warning:active { background-color: #F57C00; }
+        
+        #log { 
+            background: #000; 
+            color: #00ffcc; 
+            padding: 12px; 
+            height: 250px; 
+            overflow-y: auto; 
+            text-align: left; 
+            font-family: monospace; 
+            font-size: 13px; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+            word-wrap: break-word;
+        }
+        /* Hidden file input */
+        #fileInput { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>NUX DATA EXTRACTOR</h1>
-    <div id="status">🔴 Disconnected</div>
+<div class="container">
+    <h2>MG-30 Patch Manager</h2>
+    
+    <button id="btnConnect" class="btn">🔌 Connect to MG-30</button>
+    
+    <button id="btnImport" class="btn btn-success" disabled>📥 Import Patch to Pedal</button>
+    <button id="btnExport" class="btn btn-warning" disabled>📤 Export Patch to Phone</button>
+    
+    <input type="file" id="fileInput" accept=".mg30patch">
 
-    <button class="btn" onclick="connect()" id="btn-connect">1. CONNECT USB</button>
-    <button class="btn copy" onclick="copyData()">2. COPY DATA FOR AI</button>
+    <div id="log">System Ready...<br></div>
+</div>
 
-    <div style="margin: 10px 0; color: #fff;">
-        <strong>INSTRUCTIONS:</strong><br>
-        1. Click Connect.<br>
-        2. <u>Switch Presets</u> on the pedal (Wait 2 sec).<br>
-        3. <u>Turn every Knob</u> you want to use (Gain, Bass, Master, etc).<br>
-        4. Click "COPY DATA" and paste it to Gemini.
-    </div>
+<script>
+    const logEl = document.getElementById('log');
+    const btnConnect = document.getElementById('btnConnect');
+    const btnImport = document.getElementById('btnImport');
+    const btnExport = document.getElementById('btnExport');
+    const fileInput = document.getElementById('fileInput');
 
-    <div id="log-container">Waiting for input...</div>
+    let mg30Device = null;
 
-    <script>
-        let midiAccess = null;
-        let capturedData = [];
-        const logBox = document.getElementById('log-container');
-        const statusEl = document.getElementById('status');
+    function log(msg) {
+        logEl.innerHTML += msg + "<br>";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
 
-        async function connect() {
-            try {
-                midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-                statusEl.innerText = "🟡 Searching for NUX...";
-                
-                let found = false;
-                for (let input of midiAccess.inputs.values()) {
-                    if (input.name.includes("MG-30") || input.name.includes("NUX") || input.name.includes("MIDI")) {
-                        input.onmidimessage = handleMessage;
-                        found = true;
-                        statusEl.innerText = "🟢 CONNECTED: " + input.name;
-                        document.getElementById('btn-connect').classList.add('active');
-                        document.getElementById('btn-connect').innerText = "LISTENING...";
-                        log("✅ Device Found! Now move knobs on the hardware.");
-                    }
-                }
-                if (!found) statusEl.innerText = "❌ NUX MG-30 Not Found (Check OTG)";
-            } catch (err) {
-                statusEl.innerText = "❌ Error: " + err;
-            }
-        }
-
-        function handleMessage(event) {
-            const data = event.data;
-            if (data[0] === 0xFE || data[0] === 0xF8) return; // Ignore clock signals
-
-            // Convert to Hex
-            const hex = Array.from(data, byte => ('0' + (byte & 0xFF).toString(16)).toUpperCase().slice(-2)).join(' ');
-            
-            // Analyze Type
-            let type = "UNKNOWN";
-            let cssClass = "";
-            let description = "";
-
-            if ((data[0] & 0xF0) === 0xB0) {
-                type = "CC (Knob)";
-                cssClass = "cc";
-                description = `Knob ID: ${data[1]} | Val: ${data[2]}`;
-            } else if ((data[0] & 0xF0) === 0xC0) {
-                type = "PC (Preset)";
-                cssClass = "pc";
-                description = `Preset: ${data[1] + 1}`;
-            } else if (data[0] === 0xF0) {
-                type = "SYSEX (Data)";
-                cssClass = "sysex";
-                description = "Deep Edit Data";
-            }
-
-            // Store for AI
-            const logEntry = `[${type}] ${hex} -- ${description}`;
-            capturedData.push(logEntry);
-
-            // Show on Screen
-            const div = document.createElement('div');
-            div.className = "entry " + cssClass;
-            div.innerText = logEntry;
-            logBox.prepend(div);
-        }
-
-        function copyData() {
-            const textBlob = "--- START NUX DATA ---\n" + capturedData.join('\n') + "\n--- END NUX DATA ---";
-            navigator.clipboard.writeText(textBlob).then(() => {
-                alert("COPIED! Now paste this into Gemini.");
-            }).catch(err => {
-                alert("Copy failed. Please manually select the text.");
+    // --- 1. CONNECT & CLAIM INTERFACE ---
+    btnConnect.addEventListener('click', async () => {
+        try {
+            // Filter specifically for the NUX MG-30 based on your previous scan
+            mg30Device = await navigator.usb.requestDevice({ 
+                filters: [{ vendorId: 0x1FC9, productId: 0x8260 }] 
             });
+            
+            log("🔄 Opening device...");
+            await mg30Device.open();
+            
+            log("⚙️ Selecting Configuration 1...");
+            await mg30Device.selectConfiguration(1);
+            
+            log("📂 Claiming Interface 4...");
+            await mg30Device.claimInterface(4);
+            
+            log("✅ Connection Successful! Ready for data.");
+            
+            // Unlock the import/export buttons
+            btnConnect.disabled = true;
+            btnConnect.innerText = "Connected";
+            btnImport.disabled = false;
+            btnExport.disabled = false;
+            
+        } catch (e) {
+            log(`❌ Connection Error: ${e.message}`);
         }
+    });
 
-        function log(msg) {
-            const div = document.createElement('div');
-            div.innerText = msg;
-            div.style.color = "#fff";
-            logBox.prepend(div);
+    // --- 2. IMPORT FLOW (Phone -> Pedal) ---
+    btnImport.addEventListener('click', () => {
+        // This simulates a tap on the hidden file input
+        fileInput.click(); 
+    });
+
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        log(`📄 Selected file: ${file.name}`);
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const arrayBuffer = e.target.result;
+            const dataView = new Uint8Array(arrayBuffer);
+            
+            try {
+                log(`📤 Sending ${dataView.length} bytes to Pipe 2...`);
+                // Endpoint 2 OUT to pedal
+                await mg30Device.transferOut(2, dataView); 
+                log(`✅ Patch imported successfully!`);
+            } catch (err) {
+                log(`❌ Transfer failed: ${err.message}`);
+            }
+        };
+        // Read the file as raw binary data
+        reader.readAsArrayBuffer(file);
+    });
+
+    // --- 3. EXPORT FLOW (Pedal -> Phone) ---
+    btnExport.addEventListener('click', async () => {
+        try {
+            log("📥 Requesting current patch from pedal...");
+            
+            // NOTE: To make the pedal spit out its current patch, you usually have to 
+            // send a specific "SysEx Request Command" first. 
+            // Example placeholder (you will need the exact NUX hex code here):
+            // const requestCommand = new Uint8Array([0xF0, 0x00, 0x00, 0x00, 0xF7]);
+            // await mg30Device.transferOut(2, requestCommand);
+
+            // Listen on Endpoint 2 IN for the response
+            // We use a large buffer size (e.g., 64 bytes or higher depending on the patch size)
+            log("⏳ Waiting for data...");
+            const result = await mg30Device.transferIn(2, 1024); 
+            
+            if (result.data && result.data.byteLength > 0) {
+                log(`✅ Received ${result.data.byteLength} bytes.`);
+                
+                // Package the data into a downloadable file
+                const blob = new Blob([result.data.buffer], { type: "application/octet-stream" });
+                const url = window.URL.createObjectURL(blob);
+                
+                // Create a temporary link to force the Android browser to download it
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = "MyTone.mg30patch";
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(url);
+                log("💾 Patch saved to your phone's downloads folder!");
+            } else {
+                log("⚠️ No data received from pedal.");
+            }
+        } catch (err) {
+            log(`❌ Export failed: ${err.message}`);
         }
-    </script>
+    });
+</script>
 </body>
 </html>
